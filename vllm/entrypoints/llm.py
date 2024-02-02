@@ -126,6 +126,7 @@ class LLM:
         prompt_token_ids: Optional[List[List[int]]] = None,
         prefix_pos: Optional[Union[int, List[int]]] = None,
         use_tqdm: bool = True,
+        stream: bool = False,
         lora_request: Optional[LoRARequest] = None,
     ) -> List[RequestOutput]:
         """Generates the completions for the input prompts.
@@ -179,7 +180,7 @@ class LLM:
                               token_ids,
                               lora_request=lora_request,
                               prefix_pos=prefix_pos_i)
-        return self._run_engine(use_tqdm)
+        return self._run_stream_engine() if stream else self._run_engine(use_tqdm)
 
     def _add_request(
         self,
@@ -218,3 +219,10 @@ class LLM:
         # its previous requests.
         outputs = sorted(outputs, key=lambda x: int(x.request_id))
         return outputs
+    
+    def _run_stream_engine(self) -> RequestOutput:
+        # Run the stram engine.
+        while self.llm_engine.has_unfinished_requests():
+            step_outputs = self.llm_engine.step()
+            for output in step_outputs:
+                yield output
